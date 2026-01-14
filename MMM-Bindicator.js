@@ -1,4 +1,4 @@
-Module.register("MMM-Template", {
+Module.register("MMM-Bindicator", {
 
   defaults: {
     exampleContent: ""
@@ -15,10 +15,12 @@ Module.register("MMM-Template", {
    * Pseudo-constructor for our module. Initialize stuff here.
    */
   start() {
+    console.log("MMM-Bindicator started!");
     this.templateContent = this.config.exampleContent
 
     // set timeout for next random text
-    setInterval(() => this.addRandomText(), 3000)
+    
+    this.sendSocketNotification("BINDICATOR_COLLECT_BINS", { amountCharacters: 15 })
   },
 
   /**
@@ -29,7 +31,7 @@ Module.register("MMM-Template", {
    * @param {any} payload - The payload data`returned by the node helper.
    */
   socketNotificationReceived: function (notification, payload) {
-    if (notification === "EXAMPLE_NOTIFICATION") {
+    if (notification === "BINDICATOR_BINS_READY") {
       this.templateContent = `${this.config.exampleContent} ${payload.text}`
       this.updateDom()
     }
