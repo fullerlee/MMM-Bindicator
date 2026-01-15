@@ -62,7 +62,7 @@ def get_bin_dates():
             if headers:
                 current_month_year = headers[0].text.strip()
                 continue
-            
+            print(current_month_year)
             # Parse data rows
             cells = row.find_elements(By.TAG_NAME, "td")
             if len(cells) >= 4:
@@ -73,12 +73,16 @@ def get_bin_dates():
                     # Convert "05 January 2026" to "2026-01-05"
                     raw_date_str = f"{day_num} {current_month_year}"
                     date_obj = datetime.strptime(raw_date_str, "%d %B %Y")
-                    machine_date = date_obj.strftime("%Y-%m-%d")
+
+                    # Compare with today's date - only bother keeping future dates
+                    print("we compare: ", date_obj, " with ", datetime.today().replace(hour=0, minute=0, second=0, microsecond=0))
+                    if date_obj >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0):
+                        machine_date = date_obj.strftime("%Y-%m-%d")
+                        results_json.append({
+                            "date": machine_date,
+                            "collectionType": collection_type
+                        })
                     
-                    results_json.append({
-                        "date": machine_date,
-                        "collectionType": collection_type
-                    })
                 except ValueError:
                     continue
 
