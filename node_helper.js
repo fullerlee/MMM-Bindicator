@@ -14,16 +14,17 @@ module.exports = NodeHelper.create({
       const amountCharacters = payload.amountCharacters || 10
       //const randomText = Array.from({ length: amountCharacters }, () => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join("")
       //this.sendSocketNotification("BINDICATOR_BINS_READY", { text: randomText })
-      this.collectBins(amountCharacters);
+      this.collectBins();
     }
   },
 
-  collectBins(amountCharacters) {
-    
-    exec('./modules/MMM-Bindicator/bindicator.sh', (err, stdout, stderr) => {
+  collectBins() {
+    console.log('MMM-Bindicator: Collecting bin dates via script...');
+    exec('./modules/MMM-Bindicator/scripts/bindicator.sh', (err, stdout, stderr) => {
       
       if (err) {
         // node couldn't execute the command
+        console.error(`MMM-Bindicator exec error: ${err}`);
         return;
       }
 
@@ -34,7 +35,7 @@ module.exports = NodeHelper.create({
       //Now parse out what we need!
 
 
-      this.sendSocketNotification("BINDICATOR_BINS_READY", { text: stdout.trim() })
+      this.sendSocketNotification("BINDICATOR_BINS_READY", { binDates: stdout.trim() })
     });
   }
 })

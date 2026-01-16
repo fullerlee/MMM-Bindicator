@@ -1,7 +1,7 @@
 Module.register("MMM-Bindicator", {
 
   defaults: {
-    exampleContent: ""
+    weeksToShow: 2
   },
 
   /**
@@ -16,8 +16,7 @@ Module.register("MMM-Bindicator", {
    */
   start() {
     console.log("MMM-Bindicator started!");
-    this.templateContent = this.config.exampleContent
-
+    
     // set timeout for next random text
     
     this.sendSocketNotification("BINDICATOR_COLLECT_BINS", { amountCharacters: 15 })
@@ -32,7 +31,12 @@ Module.register("MMM-Bindicator", {
    */
   socketNotificationReceived: function (notification, payload) {
     if (notification === "BINDICATOR_BINS_READY") {
-      this.templateContent = `${this.config.exampleContent} ${payload.text}`
+      const binDates = JSON.parse(payload.binDates)
+
+      this.templateContent = '';
+      for (let i = 0; i < Math.min(binDates.length, this.config.weeksToShow); i++) {
+        this.templateContent += `${i > 0 ? '<br />' : ''}${binDates[i].date} - ${binDates[i].collectionType}`
+      }
       this.updateDom()
     }
   },
@@ -42,7 +46,8 @@ Module.register("MMM-Bindicator", {
    */
   getDom() {
     const wrapper = document.createElement("div")
-    wrapper.innerHTML = `<b>Title</b><br />${this.templateContent}`
+    wrapper.className = `bindicator-container`;
+    wrapper.innerHTML = `<b>Bins</b><br />${this.templateContent}`
 
     return wrapper
   },
