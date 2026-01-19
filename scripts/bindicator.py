@@ -1,5 +1,6 @@
 import json
 import time
+import argparse
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -8,15 +9,29 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
 
-def get_bin_dates():
+def get_bin_dates(is_pi):
     chrome_options = Options()
-    chrome_options.add_argument("--headless") 
     
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+    # --- Driver Configuration ---
+    if is_pi:
+        print("Running in Raspberry Pi mode (ARM/Headless)...")
+        # Required flags for Raspberry Pi / MagicMirror environment
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        # Point to the system-installed Chromium on the Pi
+        chrome_options.binary_location = "/usr/bin/chromium-browser"
+        service = Service(executable_path="/usr/bin/chromedriver")
+    else:
+        print("Running in PC / Development mode...")
+        # PC configuration using webdriver-manager
+        from webdriver_manager.chrome import ChromeDriverManager
+        chrome_options.add_argument("--headless") 
+        service = Service(ChromeDriverManager().install())
+
+    driver = webdriver.Chrome(service=service, options=chrome_options)
     wait = WebDriverWait(driver, 20)
-    
     results_json = []
 
     try:
@@ -53,6 +68,7 @@ def get_bin_dates():
         print("Parsing table and converting dates...")
         time.sleep(5) 
         
+        # Target table structure as identified in the council HTML
         rows = driver.find_elements(By.CSS_SELECTOR, "table tbody tr")
         current_month_year = ""
 
@@ -62,7 +78,7 @@ def get_bin_dates():
             if headers:
                 current_month_year = headers[0].text.strip()
                 continue
-            print(current_month_year)
+            
             # Parse data rows
             cells = row.find_elements(By.TAG_NAME, "td")
             if len(cells) >= 4:
@@ -70,13 +86,13 @@ def get_bin_dates():
                 collection_type = cells[3].text.strip()
                 
                 try:
-                    # Convert "05 January 2026" to "2026-01-05"
+                    # Convert to standardized format (YYYY-MM-DD)
                     raw_date_str = f"{day_num} {current_month_year}"
                     date_obj = datetime.strptime(raw_date_str, "%d %B %Y")
 
-                    # Compare with today's date - only bother keeping future dates
-                    print("we compare: ", date_obj, " with ", datetime.today().replace(hour=0, minute=0, second=0, microsecond=0))
-                    if date_obj >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0):
+                    # Compare with today's date - keep future/today dates
+                    today = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
+                    if date_obj >= today:
                         machine_date = date_obj.strftime("%Y-%m-%d")
                         results_json.append({
                             "date": machine_date,
@@ -88,12 +104,17 @@ def get_bin_dates():
 
         # 6. Final Output
         if results_json:
+            # Full path for MagicMirror if on Pi, otherwise local folder
+            output_path = 'bin_schedule.json'
+            if is_pi:
+                output_path = '/home/fullerlee/MagicMirror/modules/MMM-Bindicator/scripts/bin_schedule.json'
+
             print("\n--- MACHINE-PARSABLE JSON ---")
             print(json.dumps(results_json, indent=4))
             
-            with open('bin_schedule.json', 'w') as f:
+            with open(output_path, 'w') as f:
                 json.dump(results_json, f, indent=4)
-            print("\nSuccessfully saved to bin_schedule.json")
+            print(f"\nSuccessfully saved to {output_path}")
 
     except Exception as e:
         print(f"\nError: {e}")
@@ -101,5 +122,9 @@ def get_bin_dates():
         driver.quit()
 
 if __name__ == "__main__":
-    get_bin_dates()
-
+    # Setup command line argument
+    parser = argparse.ArgumentParser(description='Fetch bin dates for St Helens.')
+    parser.add_argument('--pi', action='store_true', help='Use Raspberry Pi ARM/Headless configuration')
+    args = parser.parse_args()
+    
+    get_bin_dates(is_pi=args.pi)
