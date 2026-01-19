@@ -15,7 +15,7 @@ def get_bin_dates(is_pi):
     
     # --- Driver Configuration ---
     if is_pi:
-        print("Running in Raspberry Pi mode (ARM/Headless)...")
+        print("Mode: Raspberry Pi (ARM/Headless) - Default")
         # Required flags for Raspberry Pi / MagicMirror environment
         chrome_options.add_argument("--headless")
         chrome_options.add_argument("--no-sandbox")
@@ -24,7 +24,7 @@ def get_bin_dates(is_pi):
         chrome_options.binary_location = "/usr/bin/chromium-browser"
         service = Service(executable_path="/usr/bin/chromedriver")
     else:
-        print("Running in PC / Development mode...")
+        print("Mode: PC / Development (Manual Toggle)")
         # PC configuration using webdriver-manager
         from webdriver_manager.chrome import ChromeDriverManager
         chrome_options.add_argument("--headless") 
@@ -68,7 +68,6 @@ def get_bin_dates(is_pi):
         print("Parsing table and converting dates...")
         time.sleep(5) 
         
-        # Target table structure as identified in the council HTML
         rows = driver.find_elements(By.CSS_SELECTOR, "table tbody tr")
         current_month_year = ""
 
@@ -82,15 +81,15 @@ def get_bin_dates(is_pi):
             # Parse data rows
             cells = row.find_elements(By.TAG_NAME, "td")
             if len(cells) >= 4:
-                day_num = cells[0].text.strip().zfill(2) # Ensures "5" becomes "05"
+                day_num = cells[0].text.strip().zfill(2)
                 collection_type = cells[3].text.strip()
                 
                 try:
-                    # Convert to standardized format (YYYY-MM-DD)
+                    # Construct standardized YYYY-MM-DD format
                     raw_date_str = f"{day_num} {current_month_year}"
                     date_obj = datetime.strptime(raw_date_str, "%d %B %Y")
 
-                    # Compare with today's date - keep future/today dates
+                    # Keep only current or future dates
                     today = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
                     if date_obj >= today:
                         machine_date = date_obj.strftime("%Y-%m-%d")
@@ -104,7 +103,7 @@ def get_bin_dates(is_pi):
 
         # 6. Final Output
         if results_json:
-            # Full path for MagicMirror if on Pi, otherwise local folder
+            # Full path for MagicMirror if in default Pi mode
             output_path = 'bin_schedule.json'
             if is_pi:
                 output_path = '/home/fullerlee/MagicMirror/modules/MMM-Bindicator/scripts/bin_schedule.json'
@@ -122,9 +121,10 @@ def get_bin_dates(is_pi):
         driver.quit()
 
 if __name__ == "__main__":
-    # Setup command line argument
-    parser = argparse.ArgumentParser(description='Fetch bin dates for St Helens.')
-    parser.add_argument('--pi', action='store_true', help='Use Raspberry Pi ARM/Headless configuration')
+    # Setup command line argument to toggle PC mode
+    parser = argparse.ArgumentParser(description='Fetch St Helens bin dates.')
+    parser.add_argument('--pc', action='store_true', help='Use PC / Development configuration (Intel/AMD)')
     args = parser.parse_args()
     
-    get_bin_dates(is_pi=args.pi)
+    # Defaults to Pi mode unless --pc flag is provided
+    get_bin_dates(is_pi=not args.pc)
