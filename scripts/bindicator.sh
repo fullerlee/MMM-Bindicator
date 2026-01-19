@@ -7,6 +7,6 @@
 #first cd into the directory where this script lives
 cd "$(dirname "$0")"
 
-source .venv/bin/activate && python ./bindicator.py 
+source .venv/bin/activate && python ./bindicator.py > /dev/null
 
-#cat bin_schedule.json
+cat ./bin_schedule.json
